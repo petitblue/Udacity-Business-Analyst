@@ -1,0 +1,80 @@
+1.
+SELECT c.Country,
+	SUM(od.Quantity*od.UnitPrice) AS revenue,
+	ROUND(SUM(od.Quantity*od.UnitPrice/total.total_revenue),2) AS revenue_ptg
+FROM Customers c,
+	Orders o,
+	OrderDetails od,
+	(SELECT SUM(od.Quantity*od.UnitPrice) AS total_revenue
+	FROM OrderDetails od)total
+WHERE c.CustomerID = o.CustomerID
+	AND o.OrderId =od.OrderID
+GROUP BY 1
+ORDER BY 2 DESC
+
+2.1
+SELECT p.ProductName Product_Name,
+	SUM(od.UnitPrice*od.Quantity*(1-od.Discount)) Total_Sales
+FROM Products p
+JOIN OrderDetails od
+ON p.ProductID= od.ProductID
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10
+
+2.2
+
+DROP VIEW IF EXISTS top10;
+
+CREATE VIEW top10 AS
+	SELECT P.ProductID Product_ID,
+		p.ProductName,
+		s.SupplierID Supplier_ID,
+		SUM(od.UnitPrice*od.Quantity*(1-od.Discount)) Total_Sales
+	FROM Products p
+	JOIN OrderDetails od
+	ON p.ProductID= od.ProductID
+	JOIN Suppliers s
+	ON p.SupplierID = s.SupplierID
+	GROUP BY 1,2,3
+	ORDER BY 4 DESC
+	LIMIT 10;
+
+SELECT REPLACE(s.CompanyName,',','') Company_Name,
+	SUM(t.Total_Sales)AS total_Sales
+FROM top10 t
+JOIN Suppliers s
+ON s.SupplierID = t.Supplier_ID
+GROUP BY 1
+ORDER BY 2 DESC
+
+3. 
+SELECT e.FirstName||' '||e.LastName AS Employee_Name,
+	e.Country AS emp_country,
+	SUM(od.UnitPrice*od.Quantity) AS total_sales,
+	c.CategoryName AS category_n
+FROM Employees e, Orders o,OrderDetails od, Products p, Categories c
+WHERE e.EmployeeID= o.EmployeeID
+	AND o.OrderId =od.OrderID
+	AND od.ProductID = p.ProductID
+	AND p.CategoryID = c.CategoryID
+GROUP BY 1
+ORDER BY 3 DESC
+
+4.
+DROP VIEW IF EXISTS SalesTrend；
+
+CREATE VIEW SalesTrend AS
+SELECT od.ProductID,
+       ((STRFTIME('%Y',o.OrderDate)-2014)*4 + (STRFTIME('%m',o.OrderDate)+2)/3) as quarter,
+       (od.UnitPrice*od.Quantity *(1-od.Discount)) as sales
+FROM OrderDetails as od,
+     Orders as o on od.OrderID = o.OrderId ;
+
+
+SELECT t.ProductName ProductName,st.quarter Quarter,sum(st.sales) QuarterlySales
+FROM top10 t,
+	SalesTrend st
+WHERE t.Product_ID = st.ProductID
+GROUP BY 1,2
+ORDER BY 1,2
